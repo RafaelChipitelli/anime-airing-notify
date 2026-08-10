@@ -94,8 +94,24 @@ A first run prints `state initialized silently for N anime` and posts
 nothing; that means your three values work. Delete `state.json` if you want
 to re-test from scratch.
 
-Then enable the workflow in the Actions tab. The first cloud run initializes
-state the same way; notifications start from the second run onward.
+### How the scheduling works
+
+There is no server to set up: GitHub Actions is the scheduler, and the
+schedule ships with the repo. The workflow at
+[`.github/workflows/check.yml`](.github/workflows/check.yml) runs
+`notify.py` every 15 minutes (`cron: "*/15 * * * *"`; edit that line to
+change the pace). Public repos get Actions minutes for free, and a run takes
+well under a minute.
+
+Two things GitHub does that you should know about:
+
+- **Forks arrive with workflows disabled.** Open the Actions tab once and
+  click the enable button, then run the workflow manually the first time
+  (Run workflow) or wait for the next quarter hour. The first run
+  initializes state silently; notifications start from the second run.
+- **Scheduled workflows get suspended after 60 days without repo activity.**
+  GitHub emails you and the Actions tab shows a re-enable button; one click
+  turns it back on. Any commit also resets the clock.
 
 ## Notes
 
