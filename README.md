@@ -45,13 +45,15 @@ there.
 
 ## Setup
 
-### One command
+Three ways in; all three end at the same place. The installer forks the repo
+into your account, asks for the three values below, validates each one live
+(bad client id, private list and wrong webhook all fail with a message
+before anything is stored), saves them as repo secrets, and fires the first
+run. Nothing needs to be preinstalled: if the GitHub CLI is missing, the
+installer downloads a portable copy to your temp folder and the login is a
+one-time code approved in your browser.
 
-If you have the [GitHub CLI](https://cli.github.com/) installed and logged in
-(`gh auth login`), this does everything: forks the repo into your account,
-asks for the three values below, validates each one live (bad client id,
-private list and wrong webhook all fail with a message before anything is
-stored), saves them as repo secrets, and fires the first run.
+### Option 1: one terminal command
 
 Windows (PowerShell):
 
@@ -65,9 +67,19 @@ macOS / Linux:
 curl -fsSL https://raw.githubusercontent.com/RafaelChipitelli/anime-airing-notify/main/setup.sh | sh
 ```
 
-Prefer to see what you run first? The scripts are [setup.ps1](setup.ps1) and
-[setup.sh](setup.sh), about 80 lines each. The manual path below does the
-same thing.
+### Option 2: download and double-click (Windows)
+
+Download
+[setup.bat](https://github.com/RafaelChipitelli/anime-airing-notify/releases/latest/download/setup.bat)
+and double-click it. It runs the exact same installer in a console window.
+Windows will show an unknown-publisher warning the first time (the file is
+not code-signed); "Run anyway" is expected.
+
+### Option 3: copy it by hand
+
+Prefer to see everything you run? The installers are [setup.ps1](setup.ps1)
+and [setup.sh](setup.sh), about 100 lines each, and the section below walks
+through every step they automate.
 
 ### By hand
 
