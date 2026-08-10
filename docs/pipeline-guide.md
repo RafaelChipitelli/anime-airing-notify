@@ -201,6 +201,10 @@ The code in this repository. GitHub Actions every 15 minutes:
 4. First run or lost state initializes silently, so a cache eviction cannot
    spam one alert per show.
 
+What a ping looks like:
+
+<img src="img/ping-yomi.png" width="300" alt="Discord embed: Daemons of the Shadow Realm, Yomi no Tsugai, Episode 18 is out, cover art">
+
 On public-repo hygiene: Actions logs of public repos are public, and a raw
 `requests` exception message contains the full request URL, webhook token
 included. The script logs exception types and status codes, nothing else.
