@@ -150,6 +150,37 @@ permanent, so they live in a baseline file and only get reported when they
 change. A growing leftover is the actual signal that a new season started
 and the mapping needs extending.
 
+## A small CLI to drive it
+
+All the moving pieces collapse into a `mal` shell function wrapping one short
+Python script that lives next to the sync code. The design rule that keeps it
+safe to type without thinking: **a bare command reads or dry-runs; adding
+`go` makes it real**. Every write path has a free preview.
+
+```
+mal watching [filter]   list by status (completed, on_hold, dropped, ptw, all;
+                        one-letter aliases; optional name filter)
+mal search <name>       search the MAL catalog with ids, episodes, year
+mal sync [go]           weekly sync: dry-run, or write for real
+mal fetch               pull the Crunchyroll history only (stored token,
+                        no cookie prompt, writes nothing)
+mal backup              snapshot the whole list to a dated JSON
+mal preview [--only X]  match new Crunchyroll series against MAL entries
+mal plan [go]           build the write plan from the reviewed preview,
+                        then write it
+mal map                 rebuild the series-to-entries mapping
+mal add [go]            entries watched outside Crunchyroll
+mal scores [sheet|go]   validate the score sheet / rebuild it / write scores
+mal summary [go]        print the weekly Discord summary, or post it
+mal auth                redo the MAL OAuth
+```
+
+Two naming details that earned their place: `plan` is not a status alias
+(plan-to-watch is `ptw`, the term people actually use), and the score-sheet
+rebuild is the explicit `scores sheet` rather than the default, because
+rebuilding overwrites filled-but-unapplied scores and the safest action
+should be the laziest one to type.
+
 ## Part 3: the new-episode notifier
 
 The code in this repository. GitHub Actions every 15 minutes:
