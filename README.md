@@ -81,8 +81,19 @@ repo → Settings → Secrets and variables → Actions → New repository secre
   DISCORD_WEBHOOK  → the webhook URL
 ```
 
-Enable the workflow in the Actions tab. The first run only initializes state;
-notifications start from the second run onward.
+Before waiting on the scheduler, you can test the whole thing locally in ten
+seconds (needs Python 3.10+ and `pip install requests`):
+
+```
+MAL_CLIENT_ID=...  MAL_USERNAME=...  DISCORD_WEBHOOK=...  python notify.py
+```
+
+A first run prints `state initialized silently for N anime` and posts
+nothing; that means your three values work. Delete `state.json` if you want
+to re-test from scratch.
+
+Then enable the workflow in the Actions tab. The first cloud run initializes
+state the same way; notifications start from the second run onward.
 
 ## Notes
 
