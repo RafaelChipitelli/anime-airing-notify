@@ -4,6 +4,8 @@ Posts to a Discord channel when a new episode airs for anything on my
 MyAnimeList that is marked watching and is currently airing. Runs on GitHub
 Actions every 15 minutes, so it works with my PC off.
 
+<img src="docs/img/ping-mushoku.png" width="420" alt="Discord embed: English title, romaji below, Episode 7 is out, cover art">
+
 ## The whole pipeline
 
 This repo is the always-on piece of a larger personal setup where watching
