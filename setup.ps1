@@ -2,30 +2,54 @@
 #   irm https://raw.githubusercontent.com/RafaelChipitelli/anime-airing-notify/main/setup.ps1 | iex
 # Forks the repo into your account, asks for the three values, validates each
 # one live, stores them as repo secrets and fires the first workflow run.
-# Requires the GitHub CLI, authenticated.
+# No prerequisites: if the GitHub CLI is missing, a portable copy is
+# downloaded to your temp folder (it handles the OAuth login and the
+# libsodium encryption that repo secrets require).
 
 $ErrorActionPreference = "Stop"
 $SRC = "RafaelChipitelli/anime-airing-notify"
 
 function Fail($msg) { Write-Host "`n$msg" -ForegroundColor Yellow; exit 1 }
 
-if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-    Fail "GitHub CLI not found. Install it first:`n  winget install --id GitHub.CLI`nthen run:`n  gh auth login`nand re-run this script."
+$gh = (Get-Command gh -ErrorAction SilentlyContinue).Source
+if (-not $gh) {
+    Write-Host "GitHub CLI not found; downloading a portable copy (~14 MB, temp folder only)..."
+    try {
+        $rel = Invoke-RestMethod "https://api.github.com/repos/cli/cli/releases/latest" -Headers @{ "User-Agent" = "anime-airing-notify-setup" }
+        $asset = $rel.assets | Where-Object name -like "*windows_amd64.zip" | Select-Object -First 1
+        $dir = Join-Path $env:TEMP ("gh-portable-" + $rel.tag_name)
+        if (-not (Test-Path $dir)) {
+            New-Item -ItemType Directory -Force $dir | Out-Null
+            $zipPath = Join-Path $dir "gh.zip"
+            Invoke-WebRequest $asset.browser_download_url -OutFile $zipPath
+            Expand-Archive $zipPath -DestinationPath $dir -Force
+        }
+        $gh = (Get-ChildItem $dir -Recurse -Filter gh.exe | Select-Object -First 1).FullName
+        if (-not $gh) { throw "gh.exe not found after extraction" }
+    } catch {
+        Fail "Could not download the GitHub CLI ($($_.Exception.Message)). Install it manually:`n  winget install --id GitHub.CLI`nand re-run this script."
+    }
 }
-gh auth status *> $null
-if ($LASTEXITCODE -ne 0) { Fail "GitHub CLI is not logged in. Run:`n  gh auth login`nand re-run this script." }
 
-$user = gh api user -q .login
+& $gh auth status *> $null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Logging into GitHub: your browser will open, approve it there (one-time code, no password in this terminal)."
+    & $gh auth login --web --hostname github.com --git-protocol https
+    & $gh auth status *> $null
+    if ($LASTEXITCODE -ne 0) { Fail "GitHub login did not complete. Re-run this script to try again." }
+}
+
+$user = & $gh api user -q .login
 $repo = "$user/anime-airing-notify"
 
 if ($user -eq $SRC.Split("/")[0]) {
     Write-Host "You own the source repo; configuring $SRC directly."
     $repo = $SRC
 } else {
-    gh repo view $repo *> $null
+    & $gh repo view $repo *> $null
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Forking $SRC into $repo..."
-        gh repo fork $SRC --default-branch-only *> $null
+        & $gh repo fork $SRC --default-branch-only *> $null
         if ($LASTEXITCODE -ne 0) { Fail "Fork failed. Fork it manually on github.com and re-run." }
     } else {
         Write-Host "Fork already exists: $repo"
@@ -64,14 +88,14 @@ try {
 } catch { Fail "Discord rejected the webhook (HTTP $($_.Exception.Response.StatusCode.value__)). Copy the URL again." }
 
 Write-Host "`nStoring the three values as secrets of $repo..."
-$cid     | gh secret set MAL_CLIENT_ID   --repo $repo
-$malUser | gh secret set MAL_USERNAME    --repo $repo
-$hook    | gh secret set DISCORD_WEBHOOK --repo $repo
+$cid     | & $gh secret set MAL_CLIENT_ID   --repo $repo
+$malUser | & $gh secret set MAL_USERNAME    --repo $repo
+$hook    | & $gh secret set DISCORD_WEBHOOK --repo $repo
 
 Write-Host "Enabling the workflow..."
-gh api -X PUT "repos/$repo/actions/permissions" -f enabled=true *> $null
-gh workflow enable airing-check --repo $repo *> $null
-gh workflow run airing-check --repo $repo *> $null
+& $gh api -X PUT "repos/$repo/actions/permissions" -f enabled=true *> $null
+& $gh workflow enable airing-check --repo $repo *> $null
+& $gh workflow run airing-check --repo $repo *> $null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`nCould not start the workflow from here (fresh forks sometimes need one click)." -ForegroundColor Yellow
     Write-Host "Open https://github.com/$repo/actions, press the enable button, then Run workflow."
