@@ -98,6 +98,30 @@ notifications start from the second run onward.
   notifier in this repo does not touch Crunchyroll at all, so it keeps
   working regardless.
 
+## Doing more with the list API
+
+Everything here builds on one convenient property of the MAL API: you can
+pull a list already filtered by status, with one authenticated GET:
+
+```
+GET https://api.myanimelist.net/v2/users/@me/animelist
+    ?status=watching          # watching | completed | on_hold | dropped | plan_to_watch
+    &nsfw=true                # without this, flagged entries silently vanish
+    &limit=1000
+    &fields=list_status,num_episodes
+```
+
+`list_status` carries progress, score and status per entry; omit the `status`
+parameter to get everything. For someone else's public list, swap `@me` for
+the username and a client id header (`X-MAL-CLIENT-ID`) is enough, no OAuth.
+
+That one call is the whole foundation for small personal commands. Mine is a
+`mal` shell function wrapping a short Python script, so things like
+`mal watching`, `mal dropped`, `mal completed slime` (filter by name) or
+`mal search frieren` print instantly instead of me opening the site. The
+notifier in this repo is the same call with `status=watching` plus an AniList
+lookup on top.
+
 ## Questions, bugs, ideas
 
 Open an [issue](../../issues) for anything: a bug in the notifier, a question
