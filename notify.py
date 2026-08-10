@@ -105,7 +105,7 @@ def latest_aired(mal_ids: list[int]) -> dict[int, dict]:
 
 def post_discord(webhook: str, items: list[dict]) -> None:
     """One embed per episode: English title first, romaji lighter below, cover
-    as thumbnail. Discord caps a webhook post at 10 embeds, so chunk."""
+    art full-width under the text. Discord caps a post at 10 embeds, so chunk."""
     for i in range(0, len(items), 10):
         embeds = []
         for it in items[i:i + 10]:
@@ -113,15 +113,15 @@ def post_discord(webhook: str, items: list[dict]) -> None:
             linhas = []
             if it["english"] and it["romaji"] and it["romaji"] != it["english"]:
                 linhas.append(f"-# {it['romaji']}")
-            ep = f"Saiu o episodio **{it['ep']}**"
+            ep = f"Episode **{it['ep']}** is out"
             if it["finished"]:
-                ep += "  (ULTIMO da temporada!)"
+                ep += "  (season finale!)"
             if it["atras"]:
-                ep += f" — voce esta no {it['atras']}"
+                ep += f", you're on {it['atras']}"
             linhas.append(ep)
             embed = {"title": titulo, "description": "\n".join(linhas), "color": 0x5a6e8a}
             if it["cover"]:
-                # "image" renderiza grande ABAIXO do texto (thumbnail e o pequeno lateral)
+                # "image" renders full-width below the text ("thumbnail" is the small side one)
                 embed["image"] = {"url": it["cover"]}
             embeds.append(embed)
         r = requests.post(webhook, json={"embeds": embeds}, timeout=20)
