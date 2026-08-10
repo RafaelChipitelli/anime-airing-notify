@@ -46,6 +46,14 @@ public web client rejects `grant_type=refresh_token` with
 renew unattended, redo the cookie login with the stored value. In my testing
 it does not rotate, so one pasted cookie has lasted indefinitely.
 
+Standing warning: all of this is a private API with no compatibility
+promise. Crunchyroll can change the token exchange, the client id, or the
+history endpoint at any time, and the export breaks until adapted. Design
+for that: make every failure abort before writing (my sync exits without
+touching MAL and the weekly Discord message says why), and keep backups of
+the MAL list so no breakage can cost you data. Mine snapshots the full list
+(status, progress, scores) before every writing run and keeps 8 weeks.
+
 ### The data model will burn you
 
 Everything below was measured on my own history (~7,600 episodes, 146
