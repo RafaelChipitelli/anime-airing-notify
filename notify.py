@@ -37,7 +37,7 @@ query($ids: [Int]) {
       status
       episodes
       title { english romaji }
-      coverImage { large }
+      coverImage { extraLarge large }
       nextAiringEpisode { episode }
     }
   }
@@ -98,7 +98,8 @@ def latest_aired(mal_ids: list[int]) -> dict[int, dict]:
         out[m["idMal"]] = {"aired": aired, "finished": finished,
                            "english": titulo.get("english") or "",
                            "romaji": titulo.get("romaji") or "",
-                           "cover": (m.get("coverImage") or {}).get("large") or ""}
+                           "cover": (m.get("coverImage") or {}).get("extraLarge")
+                                    or (m.get("coverImage") or {}).get("large") or ""}
     return out
 
 
@@ -120,7 +121,8 @@ def post_discord(webhook: str, items: list[dict]) -> None:
             linhas.append(ep)
             embed = {"title": titulo, "description": "\n".join(linhas), "color": 0x5a6e8a}
             if it["cover"]:
-                embed["thumbnail"] = {"url": it["cover"]}
+                # "image" renderiza grande ABAIXO do texto (thumbnail e o pequeno lateral)
+                embed["image"] = {"url": it["cover"]}
             embeds.append(embed)
         r = requests.post(webhook, json={"embeds": embeds}, timeout=20)
         r.raise_for_status()
