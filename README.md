@@ -45,6 +45,32 @@ there.
 
 ## Setup
 
+### One command
+
+If you have the [GitHub CLI](https://cli.github.com/) installed and logged in
+(`gh auth login`), this does everything: forks the repo into your account,
+asks for the three values below, validates each one live (bad client id,
+private list and wrong webhook all fail with a message before anything is
+stored), saves them as repo secrets, and fires the first run.
+
+Windows (PowerShell):
+
+```
+irm https://raw.githubusercontent.com/RafaelChipitelli/anime-airing-notify/main/setup.ps1 | iex
+```
+
+macOS / Linux:
+
+```
+curl -fsSL https://raw.githubusercontent.com/RafaelChipitelli/anime-airing-notify/main/setup.sh | sh
+```
+
+Prefer to see what you run first? The scripts are [setup.ps1](setup.ps1) and
+[setup.sh](setup.sh), about 80 lines each. The manual path below does the
+same thing.
+
+### By hand
+
 Fork the repo (or copy `notify.py` and the workflow), then collect three
 values.
 
