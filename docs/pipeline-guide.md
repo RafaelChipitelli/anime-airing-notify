@@ -136,8 +136,28 @@ distribution, and those counts need a refresh at run start.
 
 Windows Task Scheduler: weekly trigger, `StartWhenAvailable` (missed slot
 runs as soon as the PC turns on), `AllowStartIfOnBatteries`, action pointing
-at the venv's `pythonw.exe` so no console window flashes. cron + anacron on
-Linux gives the same semantics. Persist the CR `etp_rt` and the MAL OAuth
+at the venv's `pythonw.exe` so no console window flashes. The whole thing is
+one paste (my CLI wraps this as `mal schedule sat 12:00`):
+
+```powershell
+$p = "C:\path\to\your-sync-project"
+$action   = New-ScheduledTaskAction -Execute "$p\.venv\Scripts\pythonw.exe" `
+              -Argument "sync.py --non-interactive --apply" -WorkingDirectory $p
+$trigger  = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Saturday -At 12:00
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries `
+              -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
+Register-ScheduledTask "anime-mal-sync" -Action $action -Trigger $trigger -Settings $settings -Force
+```
+
+cron + anacron on Linux gives the same semantics; plain cron loses missed
+slots when the machine is off:
+
+```
+0 12 * * 6  cd /path/to/your-sync-project && ./venv/bin/python sync.py --non-interactive --apply
+```
+
+The notifier (part 3) needs none of this: GitHub Actions is its scheduler
+and the cadence ships in the workflow file. Persist the CR `etp_rt` and the MAL OAuth
 refresh token (the token endpoint returns one; my first version threw it
 away and the pipeline would have died quietly in a month), and make every
 interactive prompt fail fast when stdin is not a TTY.
