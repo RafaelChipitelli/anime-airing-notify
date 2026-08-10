@@ -1,8 +1,15 @@
-# Fully automated anime tracking: Crunchyroll → MyAnimeList → Discord
+# Export Crunchyroll watch history to MyAnimeList (and automate everything after)
 
-This guide documents a three-part personal automation where *watching anime is
-the only manual step*. Everything else — logging progress, updating a
-MyAnimeList profile, weekly reports, new-episode alerts — happens on its own.
+How to export your Crunchyroll history to MAL, keep the two in sync weekly,
+and get Discord alerts when new episodes air. This guide documents a
+three-part personal automation where *watching anime is the only manual
+step*. Everything else — logging progress, updating a MyAnimeList profile,
+weekly reports, new-episode alerts — happens on its own.
+
+If you searched for "export Crunchyroll history", "Crunchyroll to
+MyAnimeList", or "why is my Crunchyroll export wrong": part 1 is for you,
+especially the data-model section — most naive exports silently write wrong
+progress for every multi-season series.
 
 The airing notifier in this repository is part 3 and is directly reusable.
 Parts 1 and 2 run on a home machine; this guide documents their design and,
