@@ -91,6 +91,12 @@ notifications start from the second run onward.
   status only (a raw `requests` error message would contain the webhook URL).
 - Airing times come from AniList and reflect the Japanese broadcast.
   Simulcast platforms usually publish within minutes of that, sometimes not.
+- The Crunchyroll side of the pipeline uses a private, undocumented API. If
+  Crunchyroll changes how the token exchange or the history endpoint works,
+  the sync breaks until someone adapts it. It breaks safe: the run aborts
+  before writing anything to MAL and the Discord summary says so. The
+  notifier in this repo does not touch Crunchyroll at all, so it keeps
+  working regardless.
 
 ## Questions, bugs, ideas
 
