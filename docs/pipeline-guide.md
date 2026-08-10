@@ -40,6 +40,10 @@ browser cookie for an access token (`grant_type=etp_rt_cookie` against
 [CrunchyExporter](https://github.com/ruflas/crunchyexporter-cli) implements
 this fetch and was my starting point.
 
+Profile gotcha: if the account has two or more profiles, grab the cookie
+while logged **into your profile**. Sitting on the profile-selection screen
+is not enough; the cookie taken there does not work for the history.
+
 Renewal surprise: the token response includes a `refresh_token`, but the
 public web client rejects `grant_type=refresh_token` with
 `400 unsupported_grant_type`. The returned value is itself an `etp_rt`. To
