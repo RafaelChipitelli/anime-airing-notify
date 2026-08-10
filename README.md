@@ -4,14 +4,31 @@ Posts to a Discord channel when a new episode airs for anything on my
 MyAnimeList that is marked watching and is currently airing. Runs on GitHub
 Actions every 15 minutes, so it works with my PC off.
 
-This is one piece of a small personal pipeline: I export my Crunchyroll watch
-history to MyAnimeList once a week, get a summary on Discord, and this repo
-handles the "new episode is out" pings. The rest of the pipeline runs on my
-machine, but I wrote the whole thing up in
-[docs/pipeline-guide.md](docs/pipeline-guide.md), including every API problem
-I hit (Crunchyroll's season numbers, MAL's nsfw filtering, Jikan's dead
-search, cache-lagged list reads). If you got here trying to export your own
-Crunchyroll history to MAL, start there.
+## The whole pipeline
+
+This repo is the always-on piece of a larger personal setup where watching
+anime is the only manual step:
+
+1. **Crunchyroll history → MyAnimeList.** A weekly job on my PC pulls my full
+   Crunchyroll watch history through the same private API the apps use. The
+   history is server-side, so episodes watched on phone or TV count too. It
+   then updates my MAL list: advances progress, flips finished seasons to
+   completed, and refuses anything unsafe (it never regresses progress, never
+   downgrades a completed entry, never writes a fuzzy title match without me
+   approving it, and caps progress at the last episode that actually aired).
+2. **Weekly summary on Discord.** After each sync, a webhook post tells me
+   what advanced, what new series showed up, and whether a credential
+   expired, with the exact command to fix it.
+3. **New-episode pings (this repo).** Anything on my list that is watching
+   and currently airing gets a Discord notification within ~15 minutes of a
+   new episode airing, including shows I track manually outside Crunchyroll.
+
+The sync scripts run on my machine and are not published here, but the whole
+design is written up in [docs/pipeline-guide.md](docs/pipeline-guide.md),
+including every API problem I hit (Crunchyroll's misleading season numbers,
+MAL's silent nsfw filtering, Jikan's dead search, cache-lagged list reads).
+If you got here trying to export your own Crunchyroll history to MAL, start
+there.
 
 ## How it works
 
@@ -74,3 +91,14 @@ notifications start from the second run onward.
   status only (a raw `requests` error message would contain the webhook URL).
 - Airing times come from AniList and reflect the Japanese broadcast.
   Simulcast platforms usually publish within minutes of that, sometimes not.
+
+## Questions, bugs, ideas
+
+Open an [issue](../../issues) for anything: a bug in the notifier, a question
+about the pipeline guide, or a suggestion. Questions about the sync part
+(the code that lives on my machine) are welcome too; the guide documents the
+design and I'm happy to go deeper on any of it.
+
+Want to change something? Fork it and open a PR. It's two files, `notify.py`
+and the workflow, and there's no build step: edit, point the secrets at your
+own list and webhook, and the Actions run itself is the test.
