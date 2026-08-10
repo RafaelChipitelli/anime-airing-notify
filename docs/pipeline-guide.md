@@ -143,7 +143,23 @@ interactive prompt fail fast when stdin is not a TTY.
 A Discord webhook is a plain HTTPS POST. No bot account, no library, and
 Discord's mobile push comes with it. The sync's exit handler posts an embed
 built from the run summary, including aborted runs, which is exactly when a
-notification matters: the message carries the command to re-auth.
+notification matters: the message carries the short CLI command that fixes it
+(`mal sync` re-prompts for the Crunchyroll cookie, `mal auth` redoes the MAL
+OAuth), not a path to remember.
+
+The three states it can land in:
+
+A week with progress, green, listing exactly what advanced:
+
+<img src="img/summary-updated.png" width="440" alt="Green embed: Anime sync: 4 updated on MAL, with the list of advanced entries">
+
+A quiet week, one line, and silence means everything known is unchanged:
+
+<img src="img/summary-caught-up.png" width="260" alt="Green embed: Anime sync: all caught up, no new episodes since last week">
+
+A credential expired, amber, nothing written, fix command included:
+
+<img src="img/summary-stopped.png" width="440" alt="Amber embed: Anime sync STOPPED: Crunchyroll login expired, run mal sync to fix">
 
 Noise control: the trailer/special leftovers from the data-model section are
 permanent, so they live in a baseline file and only get reported when they
