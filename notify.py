@@ -103,10 +103,10 @@ def latest_aired(mal_ids: list[int]) -> dict[int, dict]:
             finished = True
         else:
             continue
-        titulo = m.get("title") or {}
+        titles = m.get("title") or {}
         out[m["idMal"]] = {"aired": aired, "finished": finished,
-                           "english": titulo.get("english") or "",
-                           "romaji": titulo.get("romaji") or "",
+                           "english": titles.get("english") or "",
+                           "romaji": titles.get("romaji") or "",
                            "cover": (m.get("coverImage") or {}).get("extraLarge")
                                     or (m.get("coverImage") or {}).get("large") or ""}
     return out
@@ -118,10 +118,10 @@ def post_discord(webhook: str, items: list[dict]) -> None:
     for i in range(0, len(items), 10):
         embeds = []
         for it in items[i:i + 10]:
-            titulo = it["english"] or it["romaji"]
-            linhas = []
+            title = it["english"] or it["romaji"]
+            lines = []
             if it["english"] and it["romaji"] and it["romaji"] != it["english"]:
-                linhas.append(f"-# {it['romaji']}")
+                lines.append(f"-# {it['romaji']}")
             ep = f"Episode **{it['ep']}** is out"
             if it["ep"] == 1:
                 ep += "  (premiere!)"
@@ -129,10 +129,10 @@ def post_discord(webhook: str, items: list[dict]) -> None:
                 ep += "  (season finale!)"
             if it.get("plan"):
                 ep += ", on your plan-to-watch list"
-            elif it["atras"]:
-                ep += f", you're on {it['atras']}"
-            linhas.append(ep)
-            embed = {"title": titulo, "description": "\n".join(linhas), "color": 0x5a6e8a}
+            elif it["behind"]:
+                ep += f", you're on {it['behind']}"
+            lines.append(ep)
+            embed = {"title": title, "description": "\n".join(lines), "color": 0x5a6e8a}
             if it["cover"]:
                 # "image" renders full-width below the text ("thumbnail" is the small side one)
                 embed["image"] = {"url": it["cover"]}
@@ -169,13 +169,13 @@ def main() -> int:
         print(f"AniList query failed: {sanitize(e)}")
         return 1
 
-    novos: list[dict] = []
-    adotados = 0
-    sem_dados = 0
+    new_episodes: list[dict] = []
+    adopted = 0
+    no_data = 0
     for mal_id, info in watching.items():
         a = aired.get(mal_id)
         if not a:
-            sem_dados += 1
+            no_data += 1
             continue
         key = str(mal_id)
         if key not in state:
@@ -183,29 +183,29 @@ def main() -> int:
             # latest episode did not "just air", and this is also what makes
             # a lost cache or a code deploy unable to spam one ping per show
             state[key] = a["aired"]
-            adotados += 1
+            adopted += 1
             continue
         if a["aired"] <= state[key]:
             state[key] = max(a["aired"], state[key])
             continue
-        novos.append({"ep": a["aired"], "finished": a["finished"],
-                      "english": a["english"], "romaji": a["romaji"] or info["title"],
-                      "cover": a["cover"], "plan": info["plan"],
-                      "atras": 0 if info["plan"] else
-                               (info["progress"] if info["progress"] < a["aired"] - 1 else 0)})
+        new_episodes.append({"ep": a["aired"], "finished": a["finished"],
+                             "english": a["english"], "romaji": a["romaji"] or info["title"],
+                             "cover": a["cover"], "plan": info["plan"],
+                             "behind": 0 if info["plan"] else
+                                       (info["progress"] if info["progress"] < a["aired"] - 1 else 0)})
         state[key] = a["aired"]
-    if sem_dados:
-        print(f"no airing data yet for {sem_dados} upcoming/unscheduled show(s)")
-    if adotados:
-        print(f"silently adopted {adotados} newly tracked anime")
+    if no_data:
+        print(f"no airing data yet for {no_data} upcoming/unscheduled show(s)")
+    if adopted:
+        print(f"silently adopted {adopted} newly tracked anime")
 
     # drop entries no longer monitored so state does not grow forever
     state = {k: v for k, v in state.items() if int(k) in watching}
 
-    if novos:
+    if new_episodes:
         try:
-            post_discord(webhook, novos)
-            print(f"notified {len(novos)} new episode(s)")
+            post_discord(webhook, new_episodes)
+            print(f"notified {len(new_episodes)} new episode(s)")
         except Exception as e:
             print(f"Discord post failed: {sanitize(e)}")
             return 1
