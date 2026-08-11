@@ -131,7 +131,7 @@ seconds (needs Python 3.10+ and `pip install requests`):
 MAL_CLIENT_ID=...  MAL_USERNAME=...  DISCORD_WEBHOOK=...  python notify.py
 ```
 
-A first run prints `state initialized silently for N anime` and posts
+A first run prints `silently adopted N newly tracked anime` and posts
 nothing; that means your three values work. Delete `state.json` if you want
 to re-test from scratch.
 
@@ -162,8 +162,12 @@ Two things GitHub does that you should know about:
 - Secrets never appear in the code or in logs. Since Actions logs of public
   repos are public, `notify.py` reports errors as exception type + HTTP
   status only (a raw `requests` error message would contain the webhook URL).
-- Airing times come from AniList and reflect the Japanese broadcast.
-  Simulcast platforms usually publish within minutes of that, sometimes not.
+- Airing times come from AniList and reflect the broadcast in the country of
+  origin, which is why a ping says an episode aired rather than claiming it is
+  streaming somewhere. Checked against AnimeSchedule on 2026-08-11, of the 161
+  airing shows carrying both timestamps, 76 publish subtitles in the same
+  minute as the broadcast and 83 publish later, median 30 minutes, up to 3
+  hours.
 - The Crunchyroll side of the pipeline uses a private, undocumented API. If
   Crunchyroll changes how the token exchange or the history endpoint works,
   the sync breaks until someone adapts it. It breaks safe: the run aborts

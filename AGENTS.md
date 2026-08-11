@@ -120,7 +120,9 @@ start when the next episode actually airs. A second manual run should log
 - First run posts nothing (see above).
 - GitHub suspends the cron after 60 days without repo activity; the Actions
   tab shows a re-enable button and any commit resets the clock.
-- Airing times come from AniList (Japanese broadcast); simulcast platforms
-  can lag it by minutes.
+- Airing times come from AniList, which timestamps the broadcast in the
+  country of origin. Subtitled simulcasts lag it about half the time (median
+  30 minutes, up to 3 hours measured), which is why the ping says an episode
+  aired and never that it is streaming.
 - Episode pings arrive up to ~15 minutes late (polling) plus GitHub's own
   scheduler delay.
