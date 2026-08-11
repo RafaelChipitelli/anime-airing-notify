@@ -234,12 +234,16 @@ should be the laziest one to type.
 
 The code in this repository. GitHub Actions every 15 minutes:
 
-1. Read the MAL list (client-id auth): entries that are watching and
-   currently airing.
+1. Read the MAL list (client-id auth): entries that are watching or
+   plan-to-watch, airing or about to premiere (including not-yet-aired
+   matters twice: it is what makes premiere pings possible for planned
+   shows, and MAL is slow to flip simulcasts to currently-airing).
 2. One AniList query for the last aired episode of each.
-3. Diff against state in the Actions cache; post one embed per new episode.
-4. First run or lost state initializes silently, so a cache eviction cannot
-   spam one alert per show.
+3. Diff against state in the Actions cache; post one embed per new episode,
+   with a plan-to-watch marker when it is a planned show.
+4. Any show seen for the first time is adopted silently and pings from its
+   next episode onward, so neither a fresh install, a lost cache nor a
+   newly added show can spam alerts.
 
 What a ping looks like:
 

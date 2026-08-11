@@ -6,8 +6,8 @@ verify or modify this project on a user's behalf.
 ## What this is
 
 A GitHub Actions workflow that posts a Discord message when a new episode
-airs for anime on the user's MyAnimeList that are marked watching and
-currently airing. No server, no daemon on the user's machine: everything
+airs for anime on the user's MyAnimeList that are marked watching or
+plan-to-watch and are airing or about to premiere. No server, no daemon on the user's machine: everything
 runs in the user's own GitHub account. Install = fork + three secrets +
 enable the workflow.
 
@@ -96,11 +96,13 @@ gh run list --repo USER/anime-airing-notify --limit 1
 gh run view <id> --repo USER/anime-airing-notify --log | grep -E "watching|state|episodes"
 ```
 
-Expected on the first run: `watching+airing: N` and
-`state initialized silently for N anime`, and **no Discord message**. That
-silence is by design (a fresh state must never spam one alert per show).
-Notifications start when the next episode actually airs. A second manual
-run should log `Cache restored` and `no new episodes`.
+Expected on the first run: `monitored (watching or planned, airing or
+upcoming): N`, then `silently adopted N newly tracked anime`, and **no
+Discord message**. That silence is by design: any show seen for the first
+time is adopted without a ping, which is what keeps a fresh install, a lost
+cache or a newly added show from spamming one alert per show. Notifications
+start when the next episode actually airs. A second manual run should log
+`Cache restored` and `no new episodes`.
 
 ## If you are asked to modify the code
 

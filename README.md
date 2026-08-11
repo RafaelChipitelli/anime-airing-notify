@@ -35,13 +35,16 @@ there.
 ## How it works
 
 1. Reads the MAL list (public list, client-id auth, no account credentials)
-   and keeps entries that are watching and currently airing.
+   and keeps entries that are **watching or plan-to-watch** and airing or
+   about to premiere. Planned shows get their pings too, premiere included,
+   and start watching one just moves it to the watching pings.
 2. One AniList GraphQL query (`idMal_in`) returns the last aired episode for
    all of them.
 3. Compares against state kept in the Actions cache and posts one embed per
    new episode: English title, romaji below, cover art.
-4. A missing or lost state file initializes silently, so a cache eviction can
-   never spam one alert per show.
+4. A show seen for the first time (fresh install, lost state, or newly added
+   to the list) is adopted silently; pings start from its next new episode.
+   That is what makes a cache eviction unable to spam one alert per show.
 
 ## Setup
 
