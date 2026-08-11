@@ -58,23 +58,32 @@ def sanitize(e: Exception) -> str:
     return f"{type(e).__name__}" + (f" HTTP {status}" if status else "")
 
 
-def watching_airing(client_id: str, username: str) -> dict[int, dict]:
-    """mal_id -> {title, my_progress} for entries watching AND currently_airing."""
+def monitored(client_id: str, username: str) -> dict[int, dict]:
+    """
+    mal_id -> {title, progress, plan} for entries worth watching for new
+    episodes: list status watching OR plan_to_watch, airing status
+    currently_airing OR not_yet_aired. not_yet_aired is deliberate twice
+    over: it is what makes premiere pings possible for planned shows, and
+    MAL is slow to flip simulcasts to currently_airing, which would
+    otherwise silently drop shows from monitoring.
+    """
     out: dict[int, dict] = {}
-    url = (f"{MAL_API}/users/{username}/animelist"
-           f"?status=watching&limit=100&nsfw=true&fields=list_status,status")
-    while url:
-        r = requests.get(url, headers={"X-MAL-CLIENT-ID": client_id}, timeout=30)
-        r.raise_for_status()
-        j = r.json()
-        for it in j.get("data", []):
-            node = it["node"]
-            if node.get("status") != "currently_airing":
-                continue
-            ls = it.get("list_status") or {}
-            out[node["id"]] = {"title": node["title"],
-                               "progress": ls.get("num_episodes_watched", 0)}
-        url = (j.get("paging") or {}).get("next")
+    for list_status in ("watching", "plan_to_watch"):
+        url = (f"{MAL_API}/users/{username}/animelist"
+               f"?status={list_status}&limit=100&nsfw=true&fields=list_status,status")
+        while url:
+            r = requests.get(url, headers={"X-MAL-CLIENT-ID": client_id}, timeout=30)
+            r.raise_for_status()
+            j = r.json()
+            for it in j.get("data", []):
+                node = it["node"]
+                if node.get("status") not in ("currently_airing", "not_yet_aired"):
+                    continue
+                ls = it.get("list_status") or {}
+                out[node["id"]] = {"title": node["title"],
+                                   "progress": ls.get("num_episodes_watched", 0),
+                                   "plan": list_status == "plan_to_watch"}
+            url = (j.get("paging") or {}).get("next")
     return out
 
 
@@ -114,9 +123,13 @@ def post_discord(webhook: str, items: list[dict]) -> None:
             if it["english"] and it["romaji"] and it["romaji"] != it["english"]:
                 linhas.append(f"-# {it['romaji']}")
             ep = f"Episode **{it['ep']}** is out"
+            if it["ep"] == 1:
+                ep += "  (premiere!)"
             if it["finished"]:
                 ep += "  (season finale!)"
-            if it["atras"]:
+            if it.get("plan"):
+                ep += ", on your plan-to-watch list"
+            elif it["atras"]:
                 ep += f", you're on {it['atras']}"
             linhas.append(ep)
             embed = {"title": titulo, "description": "\n".join(linhas), "color": 0x5a6e8a}
@@ -140,14 +153,13 @@ def main() -> int:
             state = json.loads(state_file.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             print("state file corrupt; reinitializing silently")
-    first_run = not state
 
     try:
-        watching = watching_airing(client_id, username)
+        watching = monitored(client_id, username)
     except Exception as e:
         print(f"MAL list read failed: {sanitize(e)}")
         return 1
-    print(f"watching+airing: {len(watching)}")
+    print(f"monitored (watching or planned, airing or upcoming): {len(watching)}")
     if not watching:
         return 0
 
@@ -158,27 +170,39 @@ def main() -> int:
         return 1
 
     novos: list[dict] = []
+    adotados = 0
+    sem_dados = 0
     for mal_id, info in watching.items():
         a = aired.get(mal_id)
         if not a:
-            print(f"no AniList airing data for mal_id {mal_id}, skipping")
+            sem_dados += 1
             continue
-        prev = state.get(str(mal_id), 0)
-        if first_run or a["aired"] <= prev:
-            state[str(mal_id)] = max(a["aired"], prev)
+        key = str(mal_id)
+        if key not in state:
+            # a show tracked for the first time is adopted silently: its
+            # latest episode did not "just air", and this is also what makes
+            # a lost cache or a code deploy unable to spam one ping per show
+            state[key] = a["aired"]
+            adotados += 1
+            continue
+        if a["aired"] <= state[key]:
+            state[key] = max(a["aired"], state[key])
             continue
         novos.append({"ep": a["aired"], "finished": a["finished"],
                       "english": a["english"], "romaji": a["romaji"] or info["title"],
-                      "cover": a["cover"],
-                      "atras": info["progress"] if info["progress"] < a["aired"] - 1 else 0})
-        state[str(mal_id)] = a["aired"]
+                      "cover": a["cover"], "plan": info["plan"],
+                      "atras": 0 if info["plan"] else
+                               (info["progress"] if info["progress"] < a["aired"] - 1 else 0)})
+        state[key] = a["aired"]
+    if sem_dados:
+        print(f"no airing data yet for {sem_dados} upcoming/unscheduled show(s)")
+    if adotados:
+        print(f"silently adopted {adotados} newly tracked anime")
 
     # drop entries no longer monitored so state does not grow forever
     state = {k: v for k, v in state.items() if int(k) in watching}
 
-    if first_run:
-        print(f"state initialized silently for {len(state)} anime")
-    elif novos:
+    if novos:
         try:
             post_discord(webhook, novos)
             print(f"notified {len(novos)} new episode(s)")
