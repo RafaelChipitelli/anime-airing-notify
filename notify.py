@@ -29,6 +29,15 @@ import requests
 MAL_API = "https://api.myanimelist.net/v2"
 ANILIST = "https://graphql.anilist.co"
 
+# AniList silently caps perPage at 50: ask for 100 and it returns 50 with
+# HTTP 200 and no error, so ids are queried in chunks rather than one call.
+# Must match perPage in ANILIST_QUERY below; a larger chunk silently drops ids.
+CHUNK = 50
+
+# airingAt is the official release in the country of origin, so the ping says
+# where it aired instead of claiming availability on a simulcast platform.
+COUNTRY = {"JP": "Japan", "CN": "China", "KR": "Korea", "TW": "Taiwan"}
+
 ANILIST_QUERY = """
 query($ids: [Int]) {
   Page(perPage: 50) {
@@ -36,6 +45,7 @@ query($ids: [Int]) {
       idMal
       status
       episodes
+      countryOfOrigin
       title { english romaji }
       coverImage { extraLarge large }
       nextAiringEpisode { episode }
@@ -89,26 +99,29 @@ def monitored(client_id: str, username: str) -> dict[int, dict]:
 
 def latest_aired(mal_ids: list[int]) -> dict[int, dict]:
     """mal_id -> {aired, title, finished} from AniList. Absent ids are skipped."""
-    r = requests.post(ANILIST, json={"query": ANILIST_QUERY,
-                                     "variables": {"ids": mal_ids}}, timeout=30)
-    r.raise_for_status()
     out: dict[int, dict] = {}
-    for m in r.json()["data"]["Page"]["media"]:
-        nxt = m.get("nextAiringEpisode")
-        if nxt and nxt.get("episode"):
-            aired = nxt["episode"] - 1
-            finished = False
-        elif m.get("status") == "FINISHED" and m.get("episodes"):
-            aired = m["episodes"]
-            finished = True
-        else:
-            continue
-        titles = m.get("title") or {}
-        out[m["idMal"]] = {"aired": aired, "finished": finished,
-                           "english": titles.get("english") or "",
-                           "romaji": titles.get("romaji") or "",
-                           "cover": (m.get("coverImage") or {}).get("extraLarge")
-                                    or (m.get("coverImage") or {}).get("large") or ""}
+    for i in range(0, len(mal_ids), CHUNK):
+        r = requests.post(ANILIST, json={"query": ANILIST_QUERY,
+                                         "variables": {"ids": mal_ids[i:i + CHUNK]}},
+                          timeout=30)
+        r.raise_for_status()
+        for m in r.json()["data"]["Page"]["media"]:
+            nxt = m.get("nextAiringEpisode")
+            if nxt and nxt.get("episode"):
+                aired = nxt["episode"] - 1
+                finished = False
+            elif m.get("status") == "FINISHED" and m.get("episodes"):
+                aired = m["episodes"]
+                finished = True
+            else:
+                continue
+            titles = m.get("title") or {}
+            out[m["idMal"]] = {"aired": aired, "finished": finished,
+                               "country": m.get("countryOfOrigin") or "",
+                               "english": titles.get("english") or "",
+                               "romaji": titles.get("romaji") or "",
+                               "cover": (m.get("coverImage") or {}).get("extraLarge")
+                                        or (m.get("coverImage") or {}).get("large") or ""}
     return out
 
 
@@ -122,7 +135,9 @@ def post_discord(webhook: str, items: list[dict]) -> None:
             lines = []
             if it["english"] and it["romaji"] and it["romaji"] != it["english"]:
                 lines.append(f"-# {it['romaji']}")
-            ep = f"Episode **{it['ep']}** is out"
+            where = COUNTRY.get(it["country"])
+            ep = (f"Episode **{it['ep']}** aired in {where}" if where
+                  else f"Episode **{it['ep']}** aired")
             if it["ep"] == 1:
                 ep += "  (premiere!)"
             if it["finished"]:
@@ -191,6 +206,7 @@ def main() -> int:
         new_episodes.append({"ep": a["aired"], "finished": a["finished"],
                              "english": a["english"], "romaji": a["romaji"] or info["title"],
                              "cover": a["cover"], "plan": info["plan"],
+                             "country": a["country"],
                              "behind": 0 if info["plan"] else
                                        (info["progress"] if info["progress"] < a["aired"] - 1 else 0)})
         state[key] = a["aired"]
