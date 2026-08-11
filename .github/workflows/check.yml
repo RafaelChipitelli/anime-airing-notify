@@ -2,7 +2,11 @@ name: airing-check
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    # Offset minutes on purpose: GitHub's scheduler queues runs, and the
+    # round marks (:00/:15/:30/:45) are the most congested slots, with
+    # delays of 10-30+ minutes. Episodes air at :00/:30, so checking at
+    # :03/:18/:33/:48 catches them a few minutes after airing instead.
+    - cron: "3,18,33,48 * * * *"
   workflow_dispatch:
 
 permissions:
