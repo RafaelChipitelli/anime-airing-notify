@@ -140,9 +140,12 @@ to re-test from scratch.
 There is no server to set up: GitHub Actions is the scheduler, and the
 schedule ships with the repo. The workflow at
 [`.github/workflows/check.yml`](.github/workflows/check.yml) runs
-`notify.py` every 15 minutes (`cron: "*/15 * * * *"`; edit that line to
-change the pace). Public repos get Actions minutes for free, and a run takes
-well under a minute.
+`notify.py` every 15 minutes (edit the cron line to change the pace). The
+minutes are deliberately offset (`3,18,33,48`): GitHub queues scheduled
+runs, the round :00/:15/:30/:45 slots are the most congested and can slip
+by 20-30 minutes, and episodes air at :00/:30, so checking just after those
+marks from an uncongested slot catches them within a few minutes. Public
+repos get Actions minutes for free, and a run takes well under a minute.
 
 Two things GitHub does that you should know about:
 
