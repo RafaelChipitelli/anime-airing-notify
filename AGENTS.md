@@ -126,3 +126,8 @@ start when the next episode actually airs. A second manual run should log
   aired and never that it is streaming.
 - Episode pings arrive up to ~15 minutes late (polling) plus GitHub's own
   scheduler delay.
+- A green run that prints `AniList API is temporarily disabled upstream;
+  pings paused` is an upstream outage, not a bug: AniList 403s its whole API
+  during incidents (seen 2026-08-15). The run exits 0 to keep a 15-minute
+  cron from mailing a failure every slot, posts one Discord notice per
+  outage, and leaves state frozen so recovery re-pings anything missed.

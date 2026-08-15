@@ -168,6 +168,8 @@ def main() -> int:
             state = json.loads(state_file.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             print("state file corrupt; reinitializing silently")
+    # popped before the numeric-key prune below; re-added only while paused
+    paused = state.pop("_paused", 0)
 
     try:
         watching = monitored(client_id, username)
@@ -181,8 +183,35 @@ def main() -> int:
     try:
         aired = latest_aired(list(watching))
     except Exception as e:
+        resp = getattr(e, "response", None)
+        if resp is not None and resp.status_code == 403 \
+                and "temporarily disabled" in (resp.text or ""):
+            # AniList switches its whole API off during incidents (2026-08-15:
+            # "temporarily disabled due to severe stability issues"). Not a
+            # failure of ours: exit 0 so a 15-minute cron does not mail a
+            # failure every run, post one Discord notice per outage, and keep
+            # state frozen so recovery re-pings anything that aired meanwhile.
+            print("AniList API is temporarily disabled upstream; pings paused")
+            if not paused:
+                notice = {"title": "Episode pings paused",
+                          "description": "AniList has temporarily disabled its API "
+                                         "due to stability issues. Nothing is lost: "
+                                         "episodes airing meanwhile will ping once "
+                                         "it recovers.",
+                          "color": 0x9a8a4a}
+                try:
+                    requests.post(webhook, json={"embeds": [notice]},
+                                  timeout=20).raise_for_status()
+                except Exception as e2:
+                    print(f"Discord notice failed: {sanitize(e2)}")
+            state["_paused"] = 1
+            state_file.write_text(json.dumps(state, ensure_ascii=False, indent=1),
+                                  encoding="utf-8")
+            return 0
         print(f"AniList query failed: {sanitize(e)}")
         return 1
+    if paused:
+        print("AniList API recovered; resuming")
 
     new_episodes: list[dict] = []
     adopted = 0
