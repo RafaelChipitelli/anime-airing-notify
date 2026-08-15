@@ -212,6 +212,15 @@ def main() -> int:
         return 1
     if paused:
         print("AniList API recovered; resuming")
+        notice = {"title": "Episode pings resumed",
+                  "description": "AniList is back. Anything that aired during "
+                                 "the outage pings now.",
+                  "color": 0x4a7a5a}
+        try:
+            requests.post(webhook, json={"embeds": [notice]},
+                          timeout=20).raise_for_status()
+        except Exception as e2:
+            print(f"Discord notice failed: {sanitize(e2)}")
 
     new_episodes: list[dict] = []
     adopted = 0
