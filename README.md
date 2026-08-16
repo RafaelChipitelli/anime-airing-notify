@@ -168,6 +168,13 @@ Two things GitHub does that you should know about:
   airing shows carrying both timestamps, 76 publish subtitles in the same
   minute as the broadcast and 83 publish later, median 30 minutes, up to 3
   hours.
+- AniList outages are survived, not failed. During a 2026-08-15 incident
+  AniList switched its whole API off for hours ("temporarily disabled due to
+  severe stability issues"), which turned every 15-minute run into a failure
+  email. Now that specific 403 posts one **Episode pings paused** notice to
+  Discord, exits 0 so GitHub stops mailing, and freezes state; the first
+  successful run posts **Episode pings resumed** and pings anything that
+  aired meanwhile. Real errors still exit 1.
 - The Crunchyroll side of the pipeline uses a private, undocumented API. If
   Crunchyroll changes how the token exchange or the history endpoint works,
   the sync breaks until someone adapts it. It breaks safe: the run aborts
