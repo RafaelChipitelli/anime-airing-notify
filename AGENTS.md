@@ -124,6 +124,13 @@ start when the next episode actually airs. A second manual run should log
   country of origin. Subtitled simulcasts lag it about half the time (median
   30 minutes, up to 3 hours measured), which is why the ping says an episode
   aired and never that it is streaming.
+- A green run that prints `AniList API is temporarily disabled upstream;
+  pings paused` is an AniList outage, not a bug: that 403 exits 0 on purpose
+  (so a 15-minute cron does not mail a failure every run), posts one paused
+  notice to Discord, and stores a `_paused` flag in state.json. Recovery
+  posts a resumed notice and re-pings anything missed, because state stayed
+  frozen. Only the "temporarily disabled" 403 gets this treatment; any other
+  AniList error still exits 1.
 - Episode pings arrive up to ~15 minutes late (polling) plus GitHub's own
   scheduler delay.
 - A green run that prints `AniList API is temporarily disabled upstream;

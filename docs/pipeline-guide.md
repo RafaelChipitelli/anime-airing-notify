@@ -245,6 +245,16 @@ The code in this repository. GitHub Actions every 15 minutes:
    next episode onward, so neither a fresh install, a lost cache nor a
    newly added show can spam alerts.
 
+One failure mode earned dedicated handling. AniList sometimes disables its
+entire API during incidents (hours-long in the 2026-08-15 one), and on a
+15-minute cron that meant a failure email every run while nothing was
+actually wrong on my side. That specific 403 now pauses instead of failing:
+one Discord notice when the outage starts, exit 0 while it lasts, and a
+resumed notice when it ends. State is deliberately left frozen for the whole
+outage, which is what makes the catch-up automatic: the first healthy run
+compares against pre-outage numbers and pings whatever aired in between.
+Every other error still fails loudly.
+
 What a ping looks like:
 
 <img src="img/ping-yomi.png" width="300" alt="Discord embed: Daemons of the Shadow Realm, Yomi no Tsugai, Episode 18 is out, cover art">
