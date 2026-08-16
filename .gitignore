@@ -2,3 +2,6 @@ state.json
 __pycache__/
 *.pyc
 .env
+
+# Subagent git worktrees (build artifacts, never commit)
+.claude/worktrees/
