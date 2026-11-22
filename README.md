@@ -157,6 +157,27 @@ Two things GitHub does that you should know about:
   GitHub emails you and the Actions tab shows a re-enable button; one click
   turns it back on. Any commit also resets the clock.
 
+### Running it as a Claude routine instead
+
+GitHub treats a scheduled workflow as best effort. On the author's repo it ran
+about four times a day instead of 96 (median gap 6 hours, longest 10), so pings
+arrived hours after the episode. A Claude cloud routine fires on its own
+schedule and does not have that problem; its minimum interval is one hour.
+
+1. In Claude Code on the web, create a cloud environment with the three values
+   as variables (one `KEY=value` per line: `MAL_CLIENT_ID`, `MAL_USERNAME`,
+   `DISCORD_WEBHOOK`) and network access to `api.myanimelist.net`,
+   `graphql.anilist.co` and `discord.com`.
+2. Create a routine on this repo with that environment, a cron such as
+   `7 * * * *` (UTC; an offset minute starts on time more often than :00), a
+   small model, and the prompt `Run docs/airing-session.md.`
+3. Turn off the Actions workflow so two runners do not ping twice
+   (`gh workflow disable airing-check`).
+
+The state lives on an `airing-data` branch that `notify.py` creates and updates
+itself (`STATE_BRANCH`). It commits only when an episode aired or the monitored
+set changed. The routine needs permission to push that branch.
+
 ## Notes
 
 - Secrets never appear in the code or in logs. Since Actions logs of public
