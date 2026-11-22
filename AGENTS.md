@@ -31,6 +31,7 @@ readable in a couple of minutes:
    | `api.myanimelist.net` | notify.py, setup scripts | read the public list; validate the client id |
    | `graphql.anilist.co` | notify.py | airing schedule (no auth) |
    | `discord.com/api/webhooks/...` | notify.py, setup scripts | the user's own webhook |
+| `origin` (github.com) | notify.py, only with `STATE_BRANCH` | read and push the state branch |
    | `api.github.com`, `github.com/cli/cli` | setup scripts only | portable GitHub CLI bootstrap |
    | `raw.githubusercontent.com/RafaelChipitelli/...` | setup.bat only | fetches setup.ps1 |
 
@@ -112,12 +113,16 @@ start when the next episode actually airs. A second manual run should log
 - `nsfw=true` on every MAL request is load-bearing, not optional: without
   it MAL silently omits flagged entries. Do not "clean it up".
 - Keep the silent-initialization behavior for missing state.
-- Secrets live only in Actions secrets. Never move them into the workflow
-  file, variables, or code.
+- Secrets live only in Actions secrets, or in the environment variables of the
+  Claude cloud environment when the routine runner (`docs/airing-session.md`)
+  is used. Never move them into the workflow file, repo variables, or code.
 
 ## Behaviors that look like bugs and are not
 
 - First run posts nothing (see above).
+- With the routine runner, pings arrive up to one schedule interval (minimum one
+  hour) after the episode, and the `airing-data` branch only gets a commit when
+  the state changed.
 - GitHub suspends the cron after 60 days without repo activity; the Actions
   tab shows a re-enable button and any commit resets the clock.
 - Airing times come from AniList, which timestamps the broadcast in the

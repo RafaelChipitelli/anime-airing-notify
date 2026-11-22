@@ -2,7 +2,8 @@
 """
 New-episode notifier: MAL watching list x AniList airing schedule -> Discord.
 
-Runs on a schedule (GitHub Actions). For every anime that is BOTH on the
+Runs on a schedule: GitHub Actions (.github/workflows/check.yml) or a Claude
+cloud routine (docs/airing-session.md). For every anime that is BOTH on the
 user's MAL list as "watching" AND currently airing, posts a Discord message
 when a new episode has aired since the last check.
 
@@ -12,8 +13,11 @@ this repository:
   MAL_USERNAME     MAL username whose public list is read
   DISCORD_WEBHOOK  Discord webhook URL to post to
   STATE_FILE       optional, defaults to state.json
+  STATE_BRANCH     optional: keep the state in state.json on this branch of
+                   origin instead of STATE_FILE (a cloud run has no disk or
+                   cache that survives it)
 
-State maps anime id -> last episode notified. A missing/empty state file
+State maps anime id -> last episode notified. A missing/empty state
 initializes silently (no notifications), so a lost cache can never spam.
 
 Log hygiene: this runs in a PUBLIC repo, so logs are public. Never print
@@ -22,6 +26,7 @@ URLs or env values; exceptions are reported as type + status code only.
 import os
 import sys
 import json
+import subprocess
 from pathlib import Path
 
 import requests
@@ -156,18 +161,83 @@ def post_discord(webhook: str, items: list[dict]) -> None:
         r.raise_for_status()
 
 
+STATE_NAME = "state.json"
+GIT_IDENTITY = ["-c", "user.name=Anime Notify",
+                "-c", "user.email=anime-notify@users.noreply.github.com"]
+
+
+def git(*args: str, stdin: str | None = None, ok: tuple = (0,)) -> subprocess.CompletedProcess:
+    """Run git and raise on failure. The message carries the exit code only:
+    git's stderr can quote the remote URL."""
+    # bytes in and out: text mode translates \n to \r\n on Windows, which put a
+    # carriage return into the file name mktree reads
+    r = subprocess.run(["git", *args], input=None if stdin is None else stdin.encode(),
+                       capture_output=True)
+    if r.returncode not in ok:
+        raise RuntimeError(f"git {args[0]} exited {r.returncode}")
+    r.stdout = r.stdout.decode()
+    return r
+
+
+def load_state_branch(branch: str) -> tuple[str, str | None]:
+    """(state text, commit it came from), read from `branch` on origin.
+    A branch that does not exist yet is a first run: ("", None). Any other
+    failure raises, because reading it as empty would overwrite the real state."""
+    if git("ls-remote", "--exit-code", "--heads", "origin", branch, ok=(0, 2)).returncode == 2:
+        return "", None
+    git("fetch", "-q", "origin", branch)
+    return (git("show", f"FETCH_HEAD:{STATE_NAME}").stdout,
+            git("rev-parse", "FETCH_HEAD").stdout.strip())
+
+
+def save_state_branch(branch: str, text: str, parent: str | None) -> None:
+    """Commit `text` onto `branch` with plumbing, so the checkout is never
+    switched. The parent is the commit load_state_branch read: a concurrent
+    writer makes this push fail instead of being overwritten."""
+    blob = git("hash-object", "-w", "--stdin", stdin=text).stdout.strip()
+    tree = git("mktree", stdin=f"100644 blob {blob}{chr(9)}{STATE_NAME}{chr(10)}").stdout.strip()
+    commit = git(*GIT_IDENTITY, "commit-tree", tree, "-m", "Update state",
+                 *(["-p", parent] if parent else [])).stdout.strip()
+    git("push", "-q", "origin", f"{commit}:refs/heads/{branch}")
+
+
 def main() -> int:
     client_id = env("MAL_CLIENT_ID")
     username = env("MAL_USERNAME")
     webhook = env("DISCORD_WEBHOOK")
     state_file = Path(os.environ.get("STATE_FILE", "state.json"))
+    state_branch = os.environ.get("STATE_BRANCH", "").strip()
 
     state: dict[str, int] = {}
-    if state_file.exists():
+    raw, parent = "", None
+    if state_branch:
         try:
-            state = json.loads(state_file.read_text(encoding="utf-8"))
+            raw, parent = load_state_branch(state_branch)
+        except RuntimeError as e:
+            # an unreadable state must stop the run: reading it as empty would
+            # adopt every show silently and then overwrite the real state
+            print(f"state branch read failed: {e}")
+            return 1
+    elif state_file.exists():
+        raw = state_file.read_text(encoding="utf-8")
+    if raw.strip():
+        try:
+            state = json.loads(raw)
         except json.JSONDecodeError:
-            print("state file corrupt; reinitializing silently")
+            print("state corrupt; reinitializing silently")
+
+    def finish(new_state: dict, code: int) -> int:
+        text = json.dumps(new_state, ensure_ascii=False, indent=1)
+        if not state_branch:
+            state_file.write_text(text, encoding="utf-8")
+        elif text.strip() != raw.strip():  # no commit when nothing changed
+            try:
+                save_state_branch(state_branch, text + chr(10), parent)
+            except RuntimeError as e:
+                print(f"state branch write failed: {e}")
+                return 1
+        return code
+
     # popped before the numeric-key prune below; re-added only while paused
     paused = state.pop("_paused", 0)
 
@@ -205,9 +275,7 @@ def main() -> int:
                 except Exception as e2:
                     print(f"Discord notice failed: {sanitize(e2)}")
             state["_paused"] = 1
-            state_file.write_text(json.dumps(state, ensure_ascii=False, indent=1),
-                                  encoding="utf-8")
-            return 0
+            return finish(state, 0)
         print(f"AniList query failed: {sanitize(e)}")
         return 1
     if paused:
@@ -266,8 +334,7 @@ def main() -> int:
     else:
         print("no new episodes")
 
-    state_file.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
-    return 0
+    return finish(state, 0)
 
 
 if __name__ == "__main__":
