@@ -26,6 +26,7 @@ URLs or env values; exceptions are reported as type + status code only.
 import os
 import sys
 import json
+import time
 import subprocess
 from pathlib import Path
 
@@ -102,13 +103,30 @@ def monitored(client_id: str, username: str) -> dict[int, dict]:
     return out
 
 
+def anilist_post(payload: dict) -> requests.Response:
+    """POST to AniList, retrying once after a 429. AniList rate limits per IP,
+    and a cloud routine shares its egress IP with other sessions, so a 429 can
+    land on this single query (2026-11-27). The wait is capped so the whole run
+    stays well inside a two-minute shell timeout."""
+    r = requests.post(ANILIST, json=payload, timeout=30)
+    if r.status_code != 429:
+        return r
+    try:
+        wait = int(r.headers.get("Retry-After", ""))
+    except ValueError:
+        wait = 60
+    wait = min(max(wait, 1), 65)
+    print(f"AniList rate limited (HTTP 429); retrying in {wait}s")
+    time.sleep(wait)
+    return requests.post(ANILIST, json=payload, timeout=30)
+
+
 def latest_aired(mal_ids: list[int]) -> dict[int, dict]:
     """mal_id -> {aired, title, finished} from AniList. Absent ids are skipped."""
     out: dict[int, dict] = {}
     for i in range(0, len(mal_ids), CHUNK):
-        r = requests.post(ANILIST, json={"query": ANILIST_QUERY,
-                                         "variables": {"ids": mal_ids[i:i + CHUNK]}},
-                          timeout=30)
+        r = anilist_post({"query": ANILIST_QUERY,
+                          "variables": {"ids": mal_ids[i:i + CHUNK]}})
         r.raise_for_status()
         for m in r.json()["data"]["Page"]["media"]:
             nxt = m.get("nextAiringEpisode")
