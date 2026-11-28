@@ -136,6 +136,11 @@ start when the next episode actually airs. A second manual run should log
   posts a resumed notice and re-pings anything missed, because state stayed
   frozen. Only the "temporarily disabled" 403 gets this treatment; any other
   AniList error still exits 1.
+- A run that prints `AniList rate limited (HTTP 429); retrying in Ns` and
+  then succeeds is normal. AniList rate limits per IP, and a cloud routine
+  shares its egress IP with other sessions, so a 429 can hit even the
+  notifier's single query. It waits the `Retry-After` it is given (capped at
+  65 s) and retries once; a second 429 exits 1 as before.
 - Episode pings arrive up to ~15 minutes late (polling) plus GitHub's own
   scheduler delay.
 - A green run that prints `AniList API is temporarily disabled upstream;
